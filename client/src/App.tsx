@@ -194,6 +194,16 @@ function App() {
         session_id: targetSessionId,
         role: targetRole
       });
+
+      // Keep connection alive through Cloudflare (100s idle timeout) and nginx
+      const keepalive = setInterval(() => {
+        if (socket.readyState === WebSocket.OPEN) {
+          socket.send(JSON.stringify({ type: "ping" }));
+        } else {
+          clearInterval(keepalive);
+        }
+      }, 30_000);
+      socket.addEventListener("close", () => clearInterval(keepalive));
     });
 
     socket.addEventListener("message", (event) => {
