@@ -1,0 +1,71 @@
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    expose:
+      - "3000"
+    environment:
+      - LATTICE_HOST=0.0.0.0
+      - LATTICE_PORT=3000
+      - LATTICE_TRUST_PROXY_HEADERS=true
+      - RUST_LOG=warn
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:3000/healthz"]
+      interval: 15s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+  nginx:
+    image: nginx:alpine
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx
+      - /var/run
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./nginx/security-headers.conf:/etc/nginx/conf.d/security-headers.conf:ro
+      - certs:/etc/nginx/certs:ro
+    depends_on:
+      app:
+        condition: service_healthy
+      certgen:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/healthz"]
+      interval: 15s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+  certgen:
+    image: alpine:3.21
+    volumes:
+      - certs:/certs
+    command: >
+      sh -c '[ -f /certs/selfsigned.crt ] && exit 0;
+      apk add --no-cache openssl &&
+      openssl req -x509 -nodes -days 3650 -newkey rsa:2048
+      -keyout /certs/selfsigned.key -out /certs/selfsigned.crt
+      -subj "/CN=lattice"'
+
+volumes:
+  certs:

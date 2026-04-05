@@ -1,0 +1,30 @@
+[package]
+name = "lattice-crypto"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+crate-type = ["rlib", "cdylib"]
+
+[dependencies]
+base64.workspace = true
+chacha20poly1305 = "0.10"
+hex = "0.4"
+hkdf = "0.12"
+hmac = "0.12"
+ml-kem = { version = "0.3.0-rc.2", features = ["getrandom", "zeroize"] }
+rand_core = { version = "0.9", features = ["os_rng"] }
+serde.workspace = true
+sha2.workspace = true
+thiserror.workspace = true
+x25519-dalek = { version = "3.0.0-pre.6", features = ["getrandom", "static_secrets", "zeroize"] }
+zeroize = { version = "1.8", features = ["zeroize_derive"] }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+getrandom = { version = "0.3", features = ["wasm_js"] }
+getrandom_02 = { package = "getrandom", version = "0.2", features = ["js"] }
+getrandom_04 = { package = "getrandom", version = "0.4", features = ["wasm_js"] }
+js-sys = "0.3"
+serde-wasm-bindgen = "0.6"
+wasm-bindgen = "0.2"

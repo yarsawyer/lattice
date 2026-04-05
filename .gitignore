@@ -1,0 +1,14 @@
+# Rust
+/target
+
+# Node
+/client/node_modules
+/client/dist
+
+# Generated WASM bindings (rebuild with scripts/build-wasm.sh)
+/client/src/generated
+
+# OS
+.DS_Store
+.claude
+.agents

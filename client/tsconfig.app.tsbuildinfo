@@ -1,0 +1,1 @@
+{"root":["./src/App.tsx","./src/main.tsx","./src/vite-env.d.ts","./src/api/client.ts","./src/api/protocol.ts","./src/crypto/index.ts","./src/generated/lattice_crypto.d.ts","./src/generated/lattice_crypto_bg.wasm.d.ts"],"version":"5.9.3"}

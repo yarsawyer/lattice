@@ -1,0 +1,9 @@
+target
+client/node_modules
+client/dist
+client/src/generated
+nginx
+.git
+.claude
+.agents
+PLAN.md
