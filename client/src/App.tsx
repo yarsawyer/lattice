@@ -306,7 +306,17 @@ function App() {
         setError(cause instanceof Error ? cause.message : "failed to load wasm crypto");
       });
 
+    function handleBeforeUnload() {
+      const socket = wsRef.current;
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({ type: "leave_session" }));
+      }
+    }
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
     return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
       cancelled = true;
       mountedRef.current = false;
       if (reconnectTimerRef.current !== null) {
