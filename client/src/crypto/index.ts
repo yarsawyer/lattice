@@ -83,8 +83,7 @@ export async function loadCryptoModule() {
     return cachedModule;
   }
 
-  const modulePath = "../generated/lattice_crypto.js";
-  const imported = (await import(/* @vite-ignore */ modulePath)) as unknown as WasmModule;
+  const imported = (await import("../generated/lattice_crypto.js")) as unknown as WasmModule;
   await imported.default();
   cachedModule = imported;
   return imported;

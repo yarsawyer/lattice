@@ -36,7 +36,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
 WORKDIR /app
 COPY --from=server --chown=lattice:lattice /build/target/release/lattice-server .
 COPY --from=client --chown=lattice:lattice /build/client/dist/ client/dist/
-COPY --from=wasm --chown=lattice:lattice /wasm-out/ client/src/generated/
 USER lattice
 EXPOSE 3000
 ENV LATTICE_HOST=0.0.0.0

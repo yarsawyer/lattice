@@ -93,7 +93,6 @@ async fn main() {
         .route("/api/v1/sessions/{id}/close", post(close_session))
         .route("/api/v1/ws", get(ws_handler))
         .nest_service("/assets", ServeDir::new("client/dist/assets"))
-        .nest_service("/generated", ServeDir::new("client/src/generated"))
         .layer(CorsLayer::permissive())
         .with_state(state);
 
