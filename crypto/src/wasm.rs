@@ -228,3 +228,8 @@ impl Sha256Hasher {
             .map_err(|err| JsValue::from_str(&err.to_string()))
     }
 }
+
+#[wasm_bindgen]
+pub fn create_sha256_hasher() -> Sha256Hasher {
+    Sha256Hasher::new()
+}

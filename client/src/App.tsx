@@ -48,7 +48,7 @@ type FileEntry = {
 type ThreadEntry = ChatEntry | FileEntry;
 
 type WasmCrypto = Awaited<ReturnType<typeof loadCryptoModule>>;
-type Sha256HasherHandle = InstanceType<WasmCrypto["Sha256Hasher"]>;
+type Sha256HasherHandle = ReturnType<WasmCrypto["create_sha256_hasher"]>;
 
 type HandshakeState = {
   inviteSecret: Uint8Array;
@@ -774,6 +774,7 @@ function App() {
       url,
       details: `${formatBytes(transfer.manifest.size)} verified`,
     });
+    setStatus(`Received ${transfer.manifest.name}.`);
     incomingTransferRef.current = null;
   }
 
@@ -844,6 +845,7 @@ function App() {
       canRespond: false,
       details: `${formatBytes(transfer.manifest.size)} sent`,
     });
+    setStatus(`Sent ${transfer.manifest.name}.`);
     retainRecoverableOutgoingTransfer(transfer);
     outgoingTransferRef.current = null;
   }
@@ -1177,6 +1179,7 @@ function App() {
           canRespond: false,
           details: "Peer rejected the file",
         });
+        setStatus("File rejected by peer.");
         break;
       case "relay_file_complete":
         await finalizeIncomingTransfer(event.transfer_id);
@@ -1194,6 +1197,7 @@ function App() {
           canRespond: false,
           details: event.reason,
         });
+        setStatus("File transfer aborted.");
         break;
       case "relay_file_resume_state":
         await resumeOutgoingTransfer(event.transfer_id, event.received_bitmap);
@@ -1431,7 +1435,7 @@ function App() {
       manifest,
       chunks: Array.from({ length: manifest.totalChunks }),
       receivedBytes: 0,
-      hasher: new cryptoModule.Sha256Hasher(),
+      hasher: cryptoModule.create_sha256_hasher(),
     };
     patchFileEntry(transferId, {
       status: "receiving",

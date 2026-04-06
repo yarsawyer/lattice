@@ -1,6 +1,6 @@
 type WasmModule = {
   default: (input?: RequestInfo | URL | Response | BufferSource | WebAssembly.Module) => Promise<unknown>;
-  Sha256Hasher: new () => {
+  create_sha256_hasher: () => {
     update: (bytes: Uint8Array) => void;
     finalize_hex: () => string;
   };
