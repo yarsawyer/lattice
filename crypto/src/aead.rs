@@ -8,16 +8,13 @@ use chacha20poly1305::{
     aead::{Aead, OsRng, rand_core::RngCore},
 };
 
-pub fn encrypt(
-    key: &[u8],
-    plaintext: &[u8],
-    aad: &[u8],
-) -> Result<EncryptedMessage, CryptoError> {
+pub fn encrypt(key: &[u8], plaintext: &[u8], aad: &[u8]) -> Result<EncryptedMessage, CryptoError> {
     if key.len() != TRAFFIC_KEY_LEN {
         return Err(CryptoError::InvalidKeyLength);
     }
 
-    let cipher = XChaCha20Poly1305::new_from_slice(key).map_err(|_| CryptoError::InvalidKeyLength)?;
+    let cipher =
+        XChaCha20Poly1305::new_from_slice(key).map_err(|_| CryptoError::InvalidKeyLength)?;
     let mut nonce = [0_u8; 24];
     OsRng.fill_bytes(&mut nonce);
     let ciphertext = cipher
@@ -46,7 +43,8 @@ pub fn decrypt(
         return Err(CryptoError::InvalidKeyLength);
     }
 
-    let cipher = XChaCha20Poly1305::new_from_slice(key).map_err(|_| CryptoError::InvalidKeyLength)?;
+    let cipher =
+        XChaCha20Poly1305::new_from_slice(key).map_err(|_| CryptoError::InvalidKeyLength)?;
     let nonce = ensure_nonce_length(nonce)?;
     cipher
         .decrypt(

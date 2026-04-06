@@ -1,5 +1,9 @@
 type WasmModule = {
   default: (input?: RequestInfo | URL | Response | BufferSource | WebAssembly.Module) => Promise<unknown>;
+  Sha256Hasher: new () => {
+    update: (bytes: Uint8Array) => void;
+    finalize_hex: () => string;
+  };
   generate_invite_secret: () => Uint8Array;
   generate_nonce: () => Uint8Array;
   derive_session_id: (inviteSecret: Uint8Array) => Uint8Array;
@@ -7,6 +11,15 @@ type WasmModule = {
     sessionIdHex: string,
     role: "alice" | "bob",
     sequenceNumber: bigint,
+  ) => Uint8Array;
+  build_file_chunk_aad: (
+    sessionIdHex: string,
+    role: "alice" | "bob",
+    transferIdHex: string,
+    chunkIndex: number,
+    declaredSize: bigint,
+    totalChunks: number,
+    fileSha256Hex: string,
   ) => Uint8Array;
   generate_mlkem_keypair: () => {
     secret_seed: Uint8Array;
@@ -37,10 +50,18 @@ type WasmModule = {
     recv_key: Uint8Array;
     handshake_key: Uint8Array;
     fingerprint: Uint8Array;
+    resume_key: Uint8Array;
   };
   handshake_mac: (
     handshakeKey: Uint8Array,
     transcriptHash: Uint8Array,
+    role: "alice" | "bob",
+  ) => Uint8Array;
+  resume_verifier: (resumeKey: Uint8Array) => Uint8Array;
+  resume_mac: (
+    resumeKey: Uint8Array,
+    challengeNonce: Uint8Array,
+    sessionIdHex: string,
     role: "alice" | "bob",
   ) => Uint8Array;
   encrypt_message: (key: Uint8Array, plaintext: Uint8Array, aad: Uint8Array) => {

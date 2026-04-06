@@ -1,8 +1,8 @@
 use crate::{
     errors::CryptoError,
     types::{
-        FINGERPRINT_LEN, HANDSHAKE_KEY_LEN, INVITE_SECRET_LEN, SESSION_ID_LEN, SHARED_SECRET_LEN,
-        SessionRole, TRAFFIC_KEY_LEN, XCHACHA_NONCE_LEN,
+        FINGERPRINT_LEN, HANDSHAKE_KEY_LEN, INVITE_SECRET_LEN, RESUME_KEY_LEN, SESSION_ID_LEN,
+        SHARED_SECRET_LEN, SessionRole, TRAFFIC_KEY_LEN, XCHACHA_NONCE_LEN,
     },
 };
 use hkdf::Hkdf;
@@ -55,23 +55,38 @@ pub fn hash_transcript(parts: &[&[u8]]) -> [u8; 32] {
     hasher.finalize().into()
 }
 
+pub struct SessionDerivationInputs<'a> {
+    pub session_id: &'a [u8],
+    pub invite_secret: &'a [u8],
+    pub alice_nonce: &'a [u8],
+    pub bob_nonce: &'a [u8],
+    pub mlkem_shared_secret: &'a [u8],
+    pub x25519_shared_secret: &'a [u8],
+    pub transcript_hash: &'a [u8],
+}
+
 pub fn derive_session_secrets(
     role: SessionRole,
-    session_id: &[u8],
-    invite_secret: &[u8],
-    alice_nonce: &[u8],
-    bob_nonce: &[u8],
-    mlkem_shared_secret: &[u8],
-    x25519_shared_secret: &[u8],
-    transcript_hash: &[u8],
+    inputs: SessionDerivationInputs<'_>,
 ) -> Result<crate::types::SessionSecrets, CryptoError> {
+    let SessionDerivationInputs {
+        session_id,
+        invite_secret,
+        alice_nonce,
+        bob_nonce,
+        mlkem_shared_secret,
+        x25519_shared_secret,
+        transcript_hash,
+    } = inputs;
+
     if session_id.len() != SESSION_ID_LEN {
         return Err(CryptoError::InvalidSessionIdLength);
     }
     if invite_secret.len() != INVITE_SECRET_LEN {
         return Err(CryptoError::InvalidInviteSecretLength);
     }
-    if mlkem_shared_secret.len() != SHARED_SECRET_LEN || x25519_shared_secret.len() != SHARED_SECRET_LEN
+    if mlkem_shared_secret.len() != SHARED_SECRET_LEN
+        || x25519_shared_secret.len() != SHARED_SECRET_LEN
     {
         return Err(CryptoError::InvalidKeyLength);
     }
@@ -95,15 +110,18 @@ pub fn derive_session_secrets(
     ikm.extend_from_slice(transcript_hash);
 
     let hk = Hkdf::<Sha256>::new(Some(&salt), &ikm);
-    let mut okm = [0_u8; 2 * TRAFFIC_KEY_LEN + HANDSHAKE_KEY_LEN + FINGERPRINT_LEN];
+    let mut okm =
+        [0_u8; 2 * TRAFFIC_KEY_LEN + HANDSHAKE_KEY_LEN + FINGERPRINT_LEN + RESUME_KEY_LEN];
     hk.expand(TRAFFIC_INFO, &mut okm)
         .map_err(|_| CryptoError::HkdfExpand)?;
 
     let alice_send = okm[0..TRAFFIC_KEY_LEN].to_vec();
     let bob_send = okm[TRAFFIC_KEY_LEN..2 * TRAFFIC_KEY_LEN].to_vec();
-    let handshake_key =
-        okm[2 * TRAFFIC_KEY_LEN..2 * TRAFFIC_KEY_LEN + HANDSHAKE_KEY_LEN].to_vec();
-    let fingerprint = okm[2 * TRAFFIC_KEY_LEN + HANDSHAKE_KEY_LEN..].to_vec();
+    let handshake_key = okm[2 * TRAFFIC_KEY_LEN..2 * TRAFFIC_KEY_LEN + HANDSHAKE_KEY_LEN].to_vec();
+    let fingerprint = okm[2 * TRAFFIC_KEY_LEN + HANDSHAKE_KEY_LEN
+        ..2 * TRAFFIC_KEY_LEN + HANDSHAKE_KEY_LEN + FINGERPRINT_LEN]
+        .to_vec();
+    let resume_key = okm[2 * TRAFFIC_KEY_LEN + HANDSHAKE_KEY_LEN + FINGERPRINT_LEN..].to_vec();
 
     let (send_key, recv_key) = match role {
         SessionRole::Alice => (alice_send, bob_send),
@@ -115,6 +133,7 @@ pub fn derive_session_secrets(
         recv_key,
         handshake_key,
         fingerprint,
+        resume_key,
     })
 }
 
@@ -123,7 +142,8 @@ pub fn handshake_mac(
     transcript_hash: &[u8],
     role: SessionRole,
 ) -> Result<Vec<u8>, CryptoError> {
-    let mut mac = HmacSha256::new_from_slice(handshake_key).map_err(|_| CryptoError::InvalidKeyLength)?;
+    let mut mac =
+        HmacSha256::new_from_slice(handshake_key).map_err(|_| CryptoError::InvalidKeyLength)?;
     mac.update(PROTOCOL_VERSION);
     mac.update(role.label().as_bytes());
     mac.update(transcript_hash);
@@ -148,4 +168,36 @@ pub fn ensure_nonce_length(nonce: &[u8]) -> Result<[u8; XCHACHA_NONCE_LEN], Cryp
     nonce
         .try_into()
         .map_err(|_| CryptoError::InvalidNonceLength)
+}
+
+pub fn resume_verifier(resume_key: &[u8]) -> Result<[u8; 32], CryptoError> {
+    if resume_key.len() != RESUME_KEY_LEN {
+        return Err(CryptoError::InvalidKeyLength);
+    }
+
+    Ok(Sha256::digest(resume_key).into())
+}
+
+pub fn resume_mac(
+    resume_key: &[u8],
+    challenge_nonce: &[u8],
+    session_id_hex: &str,
+    role: SessionRole,
+) -> Result<Vec<u8>, CryptoError> {
+    if resume_key.len() != RESUME_KEY_LEN {
+        return Err(CryptoError::InvalidKeyLength);
+    }
+    if session_id_hex.len() != SESSION_ID_LEN * 2
+        || !session_id_hex.bytes().all(|byte| byte.is_ascii_hexdigit())
+    {
+        return Err(CryptoError::InvalidSessionIdLength);
+    }
+
+    let mut mac =
+        HmacSha256::new_from_slice(resume_key).map_err(|_| CryptoError::InvalidKeyLength)?;
+    mac.update(PROTOCOL_VERSION);
+    mac.update(challenge_nonce);
+    mac.update(session_id_hex.as_bytes());
+    mac.update(role.label().as_bytes());
+    Ok(mac.finalize().into_bytes().to_vec())
 }

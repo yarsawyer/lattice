@@ -19,7 +19,8 @@ body {
 }
 
 button,
-textarea {
+textarea,
+a {
   font: inherit;
 }
 
@@ -123,6 +124,12 @@ textarea {
   justify-content: space-between;
 }
 
+.composer-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .hint {
   font-size: 0.75rem;
   color: #8a8578;
@@ -212,6 +219,38 @@ button:disabled {
   margin: 0;
 }
 
+.file-message {
+  gap: 0.35rem;
+}
+
+.file-title {
+  font-weight: 600;
+}
+
+.file-meta {
+  font-size: 0.86rem;
+  color: #5a564d;
+}
+
+.file-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.download-link {
+  display: inline-flex;
+  width: fit-content;
+  margin-top: 0.2rem;
+  color: #1f3b73;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(31, 59, 115, 0.25);
+}
+
+.download-link:hover {
+  border-bottom-color: #1f3b73;
+}
+
 .message.alice {
   justify-self: end;
   background: rgba(31, 59, 115, 0.12);
@@ -225,6 +264,14 @@ button:disabled {
 .message.system {
   justify-self: center;
   background: rgba(0, 0, 0, 0.06);
+}
+
+.message.pending {
+  opacity: 0.5;
+}
+
+.message.delivered {
+  opacity: 1;
 }
 
 .placeholder,
@@ -253,5 +300,15 @@ button:disabled {
 
   .message {
     max-width: 100%;
+  }
+
+  .composer-footer {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .composer-actions {
+    justify-content: flex-end;
   }
 }

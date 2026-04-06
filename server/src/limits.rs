@@ -31,7 +31,12 @@ impl RateLimiter {
         }
     }
 
-    pub async fn check(&self, key: impl Into<String>, max_requests: usize, window: Duration) -> bool {
+    pub async fn check(
+        &self,
+        key: impl Into<String>,
+        max_requests: usize,
+        window: Duration,
+    ) -> bool {
         let now = Instant::now();
         let cutoff = now - window;
         let mut state = self.state.lock().await;

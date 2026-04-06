@@ -14,10 +14,16 @@ pub enum CryptoError {
     InvalidX25519KeyLength,
     #[error("invalid session id length")]
     InvalidSessionIdLength,
+    #[error("invalid transfer id length")]
+    InvalidTransferIdLength,
+    #[error("invalid file digest length")]
+    InvalidFileDigestLength,
     #[error("invalid nonce length")]
     InvalidNonceLength,
     #[error("invalid key length")]
     InvalidKeyLength,
+    #[error("hasher already finalized")]
+    HasherFinalized,
     #[error("hkdf expand failed")]
     HkdfExpand,
     #[error("aead error")]

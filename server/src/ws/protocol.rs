@@ -38,6 +38,42 @@ pub enum ClientEvent {
     ChatAck {
         seq: u64,
     },
+    FileOffer {
+        transfer_id: String,
+        name: String,
+        mime_type: String,
+        size: u64,
+        total_chunks: u32,
+        sha256: String,
+    },
+    FileAccept {
+        transfer_id: String,
+    },
+    FileReject {
+        transfer_id: String,
+    },
+    FileComplete {
+        transfer_id: String,
+    },
+    FileAbort {
+        transfer_id: String,
+        reason: String,
+    },
+    FileResumeState {
+        transfer_id: String,
+        received_bitmap: String,
+    },
+    RegisterResume {
+        verifier: String,
+    },
+    ResumeSession {
+        session_id: String,
+        role: SessionRole,
+    },
+    ResumeProof {
+        resume_key: String,
+        mac: String,
+    },
     LeaveSession,
     Ping,
 }
@@ -74,10 +110,46 @@ pub enum ServerEvent {
     RelayChatAck {
         seq: u64,
     },
+    RelayFileOffer {
+        transfer_id: String,
+        name: String,
+        mime_type: String,
+        size: u64,
+        total_chunks: u32,
+        sha256: String,
+    },
+    RelayFileAccept {
+        transfer_id: String,
+    },
+    RelayFileReject {
+        transfer_id: String,
+    },
+    RelayFileComplete {
+        transfer_id: String,
+    },
+    RelayFileAbort {
+        transfer_id: String,
+        reason: String,
+    },
+    RelayFileResumeState {
+        transfer_id: String,
+        received_bitmap: String,
+    },
+    ResumeChallenge {
+        nonce: String,
+    },
+    ResumeAccepted,
+    PeerReconnected,
     PeerLeft,
     SessionExpired,
     Error {
         message: String,
     },
     Pong,
+}
+
+#[derive(Debug, Clone)]
+pub enum RelayPayload {
+    Event(ServerEvent),
+    Binary(Vec<u8>),
 }

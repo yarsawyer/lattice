@@ -3,8 +3,7 @@ use crate::{
     types::{KEM_SEED_LEN, MlKemKeypair},
 };
 use ml_kem::{
-    Ciphertext, Decapsulate, Encapsulate, EncapsulationKey768, Kem, MlKem768, Seed,
-    kem::KeyExport,
+    Ciphertext, Decapsulate, Encapsulate, EncapsulationKey768, Kem, MlKem768, Seed, kem::KeyExport,
 };
 
 pub fn generate_keypair() -> MlKemKeypair {

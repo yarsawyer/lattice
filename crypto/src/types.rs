@@ -9,6 +9,7 @@ pub const XCHACHA_NONCE_LEN: usize = 24;
 pub const TRAFFIC_KEY_LEN: usize = 32;
 pub const HANDSHAKE_KEY_LEN: usize = 32;
 pub const FINGERPRINT_LEN: usize = 16;
+pub const RESUME_KEY_LEN: usize = 32;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -58,6 +59,7 @@ pub struct SessionSecrets {
     pub recv_key: Vec<u8>,
     pub handshake_key: Vec<u8>,
     pub fingerprint: Vec<u8>,
+    pub resume_key: Vec<u8>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

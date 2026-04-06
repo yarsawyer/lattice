@@ -1,8 +1,10 @@
 #![cfg(target_arch = "wasm32")]
 
 use crate::{
-    aead, envelope, kem, session, x25519,
+    aead, envelope, hash, kem,
+    session::{self, SessionDerivationInputs},
     types::{EncryptedMessage, SessionRole},
+    x25519,
 };
 use serde_wasm_bindgen::{from_value, to_value};
 use wasm_bindgen::prelude::*;
@@ -45,6 +47,34 @@ pub fn build_message_aad(
 }
 
 #[wasm_bindgen]
+pub fn build_file_chunk_aad(
+    session_id: &str,
+    role: &str,
+    transfer_id: &str,
+    chunk_index: u32,
+    declared_size: u64,
+    total_chunks: u32,
+    file_sha256: &str,
+) -> Result<Vec<u8>, JsValue> {
+    let role = match role {
+        "alice" => SessionRole::Alice,
+        "bob" => SessionRole::Bob,
+        _ => return Err(JsValue::from_str("invalid role")),
+    };
+
+    envelope::build_file_chunk_aad(
+        session_id,
+        role,
+        transfer_id,
+        chunk_index,
+        declared_size,
+        total_chunks,
+        file_sha256,
+    )
+    .map_err(|err| JsValue::from_str(&err.to_string()))
+}
+
+#[wasm_bindgen]
 pub fn generate_mlkem_keypair() -> Result<JsValue, JsValue> {
     to_value(&kem::generate_keypair()).map_err(Into::into)
 }
@@ -57,7 +87,9 @@ pub fn generate_x25519_keypair() -> Result<JsValue, JsValue> {
 #[wasm_bindgen]
 pub fn encapsulate_mlkem(public_key: &[u8]) -> Result<JsValue, JsValue> {
     kem::encapsulate(public_key)
-        .and_then(|value| to_value(&value).map_err(|_| crate::errors::CryptoError::InvalidKemPublicKey))
+        .and_then(|value| {
+            to_value(&value).map_err(|_| crate::errors::CryptoError::InvalidKemPublicKey)
+        })
         .map_err(|err| JsValue::from_str(&err.to_string()))
 }
 
@@ -97,13 +129,15 @@ pub fn derive_session_secrets(
 
     session::derive_session_secrets(
         role,
-        session_id,
-        invite_secret,
-        alice_nonce,
-        bob_nonce,
-        mlkem_shared_secret,
-        x25519_shared_secret,
-        transcript_hash,
+        SessionDerivationInputs {
+            session_id,
+            invite_secret,
+            alice_nonce,
+            bob_nonce,
+            mlkem_shared_secret,
+            x25519_shared_secret,
+            transcript_hash,
+        },
     )
     .and_then(|secrets| {
         to_value(&secrets).map_err(|_| crate::errors::CryptoError::InvalidKeyLength)
@@ -112,7 +146,11 @@ pub fn derive_session_secrets(
 }
 
 #[wasm_bindgen]
-pub fn handshake_mac(handshake_key: &[u8], transcript_hash: &[u8], role: &str) -> Result<Vec<u8>, JsValue> {
+pub fn handshake_mac(
+    handshake_key: &[u8],
+    transcript_hash: &[u8],
+    role: &str,
+) -> Result<Vec<u8>, JsValue> {
     let role = match role {
         "alice" => SessionRole::Alice,
         "bob" => SessionRole::Bob,
@@ -120,6 +158,30 @@ pub fn handshake_mac(handshake_key: &[u8], transcript_hash: &[u8], role: &str) -
     };
 
     session::handshake_mac(handshake_key, transcript_hash, role)
+        .map_err(|err| JsValue::from_str(&err.to_string()))
+}
+
+#[wasm_bindgen]
+pub fn resume_verifier(resume_key: &[u8]) -> Result<Vec<u8>, JsValue> {
+    session::resume_verifier(resume_key)
+        .map(|verifier| verifier.to_vec())
+        .map_err(|err| JsValue::from_str(&err.to_string()))
+}
+
+#[wasm_bindgen]
+pub fn resume_mac(
+    resume_key: &[u8],
+    challenge_nonce: &[u8],
+    session_id_hex: &str,
+    role: &str,
+) -> Result<Vec<u8>, JsValue> {
+    let role = match role {
+        "alice" => SessionRole::Alice,
+        "bob" => SessionRole::Bob,
+        _ => return Err(JsValue::from_str("invalid role")),
+    };
+
+    session::resume_mac(resume_key, challenge_nonce, session_id_hex, role)
         .map_err(|err| JsValue::from_str(&err.to_string()))
 }
 
@@ -138,4 +200,31 @@ pub fn decrypt_message(
     aad: &[u8],
 ) -> Result<Vec<u8>, JsValue> {
     aead::decrypt(key, nonce, ciphertext, aad).map_err(|err| JsValue::from_str(&err.to_string()))
+}
+
+#[wasm_bindgen]
+pub struct Sha256Hasher {
+    inner: hash::Sha256Hasher,
+}
+
+#[wasm_bindgen]
+impl Sha256Hasher {
+    #[wasm_bindgen(constructor)]
+    pub fn new() -> Self {
+        Self {
+            inner: hash::Sha256Hasher::new(),
+        }
+    }
+
+    pub fn update(&mut self, bytes: &[u8]) -> Result<(), JsValue> {
+        self.inner
+            .update(bytes)
+            .map_err(|err| JsValue::from_str(&err.to_string()))
+    }
+
+    pub fn finalize_hex(&mut self) -> Result<String, JsValue> {
+        self.inner
+            .finalize_hex()
+            .map_err(|err| JsValue::from_str(&err.to_string()))
+    }
 }
